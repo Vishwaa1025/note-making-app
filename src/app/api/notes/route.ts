@@ -1,21 +1,19 @@
-// app/api/notes/[id]/versions/route.ts
-
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";  // Adjust to your Prisma client location
+import prisma from "@/lib/prisma";  // Adjust the import path based on your project structure
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET() {
   try {
-    const noteId = parseInt(params.id);
-
-    // Fetch all versions for the note
-    const versions = await prisma.noteVersion.findMany({
-      where: { noteId },
-      orderBy: { createdAt: 'desc' }, // Sort by the latest version first
+    // Fetch all notes from the database
+    const notes = await prisma.note.findMany({
+      orderBy: { createdAt: 'desc' }, // Sort notes by the most recent first
     });
 
-    return NextResponse.json(versions, { status: 200 });
+    // Return the fetched notes as a JSON response with status 200
+    return NextResponse.json(notes, { status: 200 });
   } catch (error) {
-    console.error("Error fetching note versions:", error);
-    return NextResponse.json({ error: "Failed to fetch note versions" }, { status: 500 });
+    console.error("Error fetching notes:", error);
+
+    // Return an error message with status 500 in case of any issues
+    return NextResponse.json({ error: "Failed to fetch notes" }, { status: 500 });
   }
 }

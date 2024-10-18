@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Star, AlertTriangle, Archive } from "lucide-react";
+import { Note } from "./NotesDisplay";
 
 // Define the prop type for AddNoteForm
 interface AddNoteFormProps {
-  closeModal: () => void; // This is the closeModal function passed from AddNoteModal
+  closeModal: () => void;
+  handleNoteCreation: (newNote: Note) => void; // Accept the new note
 }
 
-export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
+export default function AddNoteForm({ closeModal, handleNoteCreation }: AddNoteFormProps) {
   const [newNote, setNewNote] = useState<{
     title: string;
     description: string;
@@ -22,39 +24,66 @@ export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
   }>({
     title: "",
     description: "",
-    selectedBadge: null, // Only one badge can be selected at a time
+    selectedBadge: null,
   });
 
-  const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewNote((prevNote) => ({ ...prevNote, [name]: value }));
   };
 
   const handleBadgeSelect = (field: "isStarred" | "isImportant" | "isArchived") => {
-    setNewNote((prevNote) => ({ ...prevNote, selectedBadge: field })); // Only one badge selected
+    setNewNote((prevNote) => ({ ...prevNote, selectedBadge: field }));
   };
 
-  const handleSaveNote = (e: FormEvent) => {
+  const handleSaveNote = async (e: FormEvent) => {
     e.preventDefault();
 
     if (newNote.title.trim() !== "") {
-      // Add logic to save the note (API call or state update)
-
-      // Show toast notification using Sonner
-      toast("Note Saved", {
-        description: `Title: ${newNote.title}`,
-        action: {
-          label: "Undo",
-          onClick: () => {
-            console.log("Undo action clicked");
+      try {
+        // API call to create a new note
+        const response = await fetch("/api/notes/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        },
-      });
+          body: JSON.stringify({
+            title: newNote.title,
+            content: newNote.description,
+            isStarred: newNote.selectedBadge === "isStarred",
+            isImportant: newNote.selectedBadge === "isImportant",
+            isArchived: newNote.selectedBadge === "isArchived",
+            userId: 1, // Replace with the actual user ID
+          }),
+        });
 
-      setNewNote({ title: "", description: "", selectedBadge: null });
-      closeModal(); // Close the modal after saving the note
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Call handleNoteCreation with the new note data
+          handleNoteCreation(data);
+
+          // Show toast notification using Sonner
+          toast("Note Saved", {
+            description: `Title: ${newNote.title}`,
+            action: {
+              label: "Undo",
+              onClick: () => {
+                console.log("Undo action clicked");
+              },
+            },
+          });
+
+          // Clear the form and close the modal after saving
+          setNewNote({ title: "", description: "", selectedBadge: null });
+        } else {
+          const errorData = await response.json();
+          toast("Error", { description: errorData.error });
+        }
+      } catch (error) {
+        console.error("Error saving note:", error);
+        toast("Error", { description: "Failed to save note" });
+      }
     }
   };
 
@@ -80,7 +109,7 @@ export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
           placeholder="Write your notes here..."
           value={newNote.description}
           onChange={handleInputChange}
-          className="mw-full min-h-[400px] max-h-[600px]" // Increased height for the text area
+          className="mw-full min-h-[400px] max-h-[600px]"
           required
         />
       </div>
@@ -90,8 +119,8 @@ export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
         <Badge
           className={`cursor-pointer transition-colors ${
             newNote.selectedBadge === "isStarred"
-              ? "bg-[#FFD700] text-black" // Bright Gold when selected
-              : "bg-muted text-muted-foreground hover:bg-[#FFEA3D] hover:text-black" // Lighter Gold on hover
+              ? "bg-[#FFD700] text-black"
+              : "bg-muted text-muted-foreground hover:bg-[#FFEA3D] hover:text-black"
           }`}
           onClick={() => handleBadgeSelect("isStarred")}
         >
@@ -102,8 +131,8 @@ export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
         <Badge
           className={`cursor-pointer transition-colors ${
             newNote.selectedBadge === "isImportant"
-              ? "bg-[#FF4500] text-white" // Bright Red when selected
-              : "bg-muted text-muted-foreground hover:bg-[#FF6347] hover:text-white" // Lighter Red on hover
+              ? "bg-[#FF4500] text-white"
+              : "bg-muted text-muted-foreground hover:bg-[#FF6347] hover:text-white"
           }`}
           onClick={() => handleBadgeSelect("isImportant")}
         >
@@ -114,8 +143,8 @@ export default function AddNoteForm({ closeModal }: AddNoteFormProps) {
         <Badge
           className={`cursor-pointer transition-colors ${
             newNote.selectedBadge === "isArchived"
-              ? "bg-[#0ADD08] text-white" // Bright Green when selected
-              : "bg-muted text-muted-foreground hover:bg-[#0ADD08] hover:text-white" // Lighter Green on hover
+              ? "bg-[#0ADD08] text-white"
+              : "bg-muted text-muted-foreground hover:bg-[#0ADD08] hover:text-white"
           }`}
           onClick={() => handleBadgeSelect("isArchived")}
         >
