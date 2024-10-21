@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import Link from "next/link";
 import { Bell, CircleUser, Home, Menu, Star, FileText, Archive, Bookmark, Search } from "lucide-react";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import AddNoteModal from "@/components/AddNoteModal";
+import EditNoteForm from "@/components/EditNoteForm"; // Import the EditNoteForm component
+import VersionHistoryModal from "@/components/VersionHistory"; // Import VersionHistoryModal
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import NoteCard from "@/components/NotesDisplay"; // Import the NoteCard component
@@ -22,6 +24,15 @@ interface Note {
   isStarred: boolean;
   isImportant: boolean;
   isArchived: boolean;
+}
+
+export interface NoteVersion {
+  id: number;
+  version: number;
+  title: string;
+  content: string;
+  action: string; // "update" or "delete"
+  createdAt: string; // Timestamp for when the version was created
 }
 
 export function ModeToggle() {
@@ -46,10 +57,14 @@ export function ModeToggle() {
 }
 
 export default function Dashboard() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReadOnlyCardOpen, setIsReadOnlyCardOpen] = useState(false); // New state for ReadOnlyNoteCard
+  const [isModalOpen, setIsModalOpen] = useState(false); // State for Add Note Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // State for Edit Note Modal
+  const [isReadOnlyCardOpen, setIsReadOnlyCardOpen] = useState(false); // State for ReadOnlyNoteCard
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false); // State for Version History Modal
   const [notes, setNotes] = useState<Note[]>([]); // State for storing notes
   const [selectedNote, setSelectedNote] = useState<Note | null>(null); // State for viewing a single note
+  const [editingNote, setEditingNote] = useState<Note | null>(null); // State for the note being edited
+  const [versions, setVersions] = useState<NoteVersion[]>([]); // State for note versions
 
   useEffect(() => {
     fetchNotes(); // Fetch notes on component mount
@@ -93,7 +108,7 @@ export default function Dashboard() {
         method: 'DELETE',
       });
   
-      if (response) {
+      if (response.ok) {
         fetchNotes(); // This ensures the local state is updated
       } else {
         console.error("Failed to delete the note");
@@ -104,7 +119,41 @@ export default function Dashboard() {
   };
 
   const handleEditNote = (note: Note) => {
-    console.log(`Editing note: ${note.title}`);
+    setEditingNote(note); // Set the note to be edited
+    setIsEditModalOpen(true); // Open the edit modal
+  };
+
+  const closeEditModal = () => {
+    setEditingNote(null); // Reset the note being edited
+    setIsEditModalOpen(false); // Close the edit modal
+  };
+
+  const handleNoteUpdate = (updatedNote: Note) => {
+    setNotes(prevNotes =>
+      prevNotes.map(note => note.id === updatedNote.id ? updatedNote : note)
+    );
+    closeEditModal(); // Close the edit modal after updating the note
+  };
+
+  const handleViewVersionHistory = async (note: Note) => {
+    setSelectedNote(note);
+    setIsVersionHistoryOpen(true);
+
+    try {
+      const response = await fetch(`/api/notes/${note.id}/versions`);
+      if (response.ok) {
+        const data = await response.json();
+        setVersions(data);
+      } else {
+        console.error("Failed to fetch version history");
+      }
+    } catch (error) {
+      console.error("Error fetching version history:", error);
+    }
+  };
+
+  const closeVersionHistory = () => {
+    setIsVersionHistoryOpen(false);
   };
 
   return (
@@ -225,7 +274,8 @@ export default function Dashboard() {
                   note={note}
                   onEdit={() => handleEditNote(note)}
                   onDelete={() => handleDeleteNote(note.id)}
-                  onView={() => handleViewNote(note)} // Trigger view action
+                  onView={() => handleViewNote(note)}
+                  onViewVersionHistory={() => handleViewVersionHistory(note)} // Trigger version history
                 />
               ))}
             </div>
@@ -243,14 +293,33 @@ export default function Dashboard() {
           {/* AddNoteModal Component */}
           <AddNoteModal isOpen={isModalOpen} closeModal={closeAddNoteModal} setNotes={setNotes} />
 
+          {/* EditNoteModal Component */}
+          {editingNote && (
+            <EditNoteForm
+              isOpen={isEditModalOpen}
+              note={editingNote}
+              closeModal={closeEditModal}
+              handleNoteUpdate={handleNoteUpdate}
+            />
+          )}
+
           {/* View Selected Note in ReadOnly Mode */}
-          {selectedNote && (
+          {selectedNote && isReadOnlyCardOpen && (
             <ReadOnlyNoteCard 
               title={selectedNote.title} 
               content={selectedNote.content} 
               date={selectedNote.date} 
               onBack={handleBackToNotes} 
               isOpen={isReadOnlyCardOpen} // Ensure modal visibility is controlled properly
+            />
+          )}
+
+          {/* VersionHistoryModal Component */}
+          {selectedNote && isVersionHistoryOpen && (
+            <VersionHistoryModal
+              versions={versions}
+              onBack={closeVersionHistory}
+              isOpen={isVersionHistoryOpen}
             />
           )}
         </main>

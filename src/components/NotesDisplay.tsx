@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, Star, Bookmark, Archive } from 'lucide-react';
+import { Edit, Trash2, Star, Bookmark, Archive, History } from 'lucide-react'; // Added History icon
 
 export interface Note {
   id: number;
@@ -20,9 +20,10 @@ interface NoteCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onView: () => void;
+  onViewVersionHistory: () => void; // New prop for viewing version history
 }
 
-export default function NoteCard({ note, onEdit, onDelete, onView }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onView, onViewVersionHistory }: NoteCardProps) {
   return (
     <Card className="w-full max-w-sm p-6 rounded-lg shadow-lg">
       <CardHeader className="flex justify-between items-center">
@@ -36,6 +37,9 @@ export default function NoteCard({ note, onEdit, onDelete, onView }: NoteCardPro
           </Button>
           <Button variant="ghost" size="icon" onClick={onDelete}>
             <Trash2 className="h-4 w-4 text-red-500" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onViewVersionHistory}> {/* Version history button */}
+            <History className="h-4 w-4 text-gray-500" />
           </Button>
         </div>
       </CardHeader>
